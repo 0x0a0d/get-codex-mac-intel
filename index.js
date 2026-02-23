@@ -341,8 +341,9 @@ process.on('SIGTERM', () => { cleanup(1); process.exit(1); });
   });
 
   // Force-install x64 platform package for Codex CLI binaries.
-  // npm only installs optional deps matching host arch (arm64 on macos-latest),
-  // so we must explicitly install the x64 variant to get codex/rg binaries.
+  // npm only installs optional deps matching host arch (arm64 on macos-latest)
+  // and rejects cross-arch installs with EBADPLATFORM. Use npm pack + tar to
+  // bypass platform checks entirely.
   const codexPkg = JSON.parse(
     fs.readFileSync(path.join(BUILD_PROJECT, 'node_modules/@openai/codex/package.json'), 'utf8')
   );
@@ -350,17 +351,13 @@ process.on('SIGTERM', () => { cleanup(1); process.exit(1); });
   const x64Spec = x64Alias.startsWith('npm:') ? x64Alias.slice(4) : `@openai/codex@latest`;
   const x64Dir = path.join(BUILD_PROJECT, 'node_modules/@openai/codex-darwin-x64');
   if (!fs.existsSync(x64Dir)) {
-    log('x64 codex platform package missing; installing explicitly');
-    run(
-      `npm install --no-audit --no-fund --no-save "${x64Spec}"`,
-      { cwd: BUILD_PROJECT, silent: true }
+    log('x64 codex platform package missing; fetching via npm pack');
+    const tarball = capture(
+      `npm pack "${x64Spec}" --pack-destination .`,
+      { cwd: BUILD_PROJECT }
     );
-    // npm may nest the package; ensure it lands at the expected path
-    if (!fs.existsSync(x64Dir)) {
-      const tarball = capture(`npm pack "${x64Spec}" --pack-destination .`, { cwd: BUILD_PROJECT });
-      fs.mkdirSync(x64Dir, { recursive: true });
-      run(`tar xzf "${tarball}" --strip-components=1 -C "${x64Dir}"`, { cwd: BUILD_PROJECT });
-    }
+    fs.mkdirSync(x64Dir, { recursive: true });
+    run(`tar xzf "${tarball}" --strip-components=1 -C "${x64Dir}"`, { cwd: BUILD_PROJECT });
   }
 
   // ------------------------------------------------------------------
