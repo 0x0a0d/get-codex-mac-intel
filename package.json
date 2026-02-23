@@ -1,0 +1,16 @@
+{
+  "name": "codex-intel-build",
+  "version": "1.0.0",
+  "description": "Automatically generates a Codex Mac Intel build from the upstream Codex.dmg and provides a CLI for managing builds.",
+  "main": "index.js",
+  "bin": {
+    "codex-intel-build": "index.js",
+    "get-codex-mac-intel": "bin/get-codex-mac-intel.js"
+  },
+  "scripts": {
+    "test": "node --test tests/ci/*.test.js tests/get-codex/*.test.js tests/docs/*.test.js"
+  },
+  "keywords": ["codex", "intel", "build", "mac"],
+  "author": "0x0a0d",
+  "license": "ISC"
+}
