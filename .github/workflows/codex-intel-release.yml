@@ -165,7 +165,7 @@ jobs:
           ```
           EOF
 
-          perl -0777 -i -pe "s/__VERSION__/$ENV{VERSION}/g; s/__RELEASE_TAG__/$ENV{RELEASE_TAG}/g; s/__REASON__/$ENV{REASON}/g" "$notes_file"
+          perl -0777 -i -pe "s/__VERSION__/\$ENV{VERSION}/g; s/__RELEASE_TAG__/\$ENV{RELEASE_TAG}/g; s/__REASON__/\$ENV{REASON}/g" "$notes_file"
           echo "notes_file=$notes_file" >> "$GITHUB_OUTPUT"
 
       - name: Create or update GitHub release
