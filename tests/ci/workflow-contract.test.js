@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const workflowPath = path.join(__dirname, '../../.github/workflows/codex-intel-release.yml');
+const workflowPath = path.join(__dirname, '../../.github/workflows/get-codex-release.yml');
 
 function readWorkflow() {
   return fs.readFileSync(workflowPath, 'utf8');
@@ -61,7 +61,7 @@ test('workflow uses macOS runner and contents: write permission', () => {
 test('workflow defines top-level concurrency guard', () => {
   const content = readWorkflow();
 
-  assert.match(content, /concurrency:\s*[\s\S]*group:\s*codex-intel-release-\$\{\{\s*github\.repository\s*\}\}/);
+  assert.match(content, /concurrency:\s*[\s\S]*group:\s*get-codex-release-\$\{\{\s*github\.repository\s*\}\}/);
   assert.match(content, /concurrency:\s*[\s\S]*cancel-in-progress:\s*false/);
 });
 
@@ -91,7 +91,7 @@ test('workflow builds intel dmg and names output from VERSION', () => {
 test('workflow defines windows matrix for x64 and arm64 portable zip', () => {
   const content = readWorkflow();
 
-  assert.match(content, /codex-windows-release:/);
+  assert.match(content, /get-codex-windows-release:/);
   assert.match(content, /matrix:\s*[\s\S]*arch:\s*\[x64, arm64\]/);
   assert.match(content, /scripts\/build-windows-zip\.js/);
   assert.match(content, /CodexWindows_\$\{\{ matrix\.arch \}\}_\$\{env:SAFE_VERSION\}\.zip/);

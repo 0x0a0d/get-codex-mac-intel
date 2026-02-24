@@ -258,6 +258,49 @@ test('cache mode on windows target skips sign prompt', async () => {
   assert.equal(result.signed, false);
 });
 
+test('cache mode infers windows target from runtime host when platform is omitted', async () => {
+  const calls = [];
+  let promptCount = 0;
+
+  const result = await runMain(['--cache', '--workdir', '/tmp/cache-out'], {
+    env: { HOME: '/home/tester', RUNTIME_PLATFORM: 'win32', RUNTIME_ARCH: 'arm64' },
+    releaseApi: {
+      async getLatest() {
+        return {
+          tag_name: 'v1.2.3',
+          published_at: '2026-02-20T00:00:00Z',
+          body: 'Release note body',
+          assets: [
+            { name: 'CodexWindows_arm64_1.2.3.zip', browser_download_url: 'https://example.com/CodexWindows_arm64_1.2.3.zip' },
+          ],
+        };
+      },
+    },
+    io: {
+      log() {},
+      async prompt() {
+        promptCount += 1;
+        throw new Error('prompt should not run when --workdir is provided and inferred target is windows');
+      },
+    },
+    downloader: {
+      async download(url, location, filename) {
+        calls.push({ url, location, filename });
+        return path.join(location, filename);
+      },
+    },
+    signer: { async sign() {} },
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].filename, 'CodexWindows_arm64_1.2.3.zip');
+  assert.equal(calls[0].location, '/tmp/cache-out');
+  assert.equal(promptCount, 0);
+  assert.equal(result.target.platform, 'windows');
+  assert.equal(result.target.arch, 'arm64');
+  assert.equal(result.signed, false);
+});
+
 test('sign mode calls signer with provided path', async () => {
   const signed = [];
 
@@ -278,12 +321,16 @@ test('sign mode calls signer with provided path', async () => {
   assert.equal(result.mode, 'sign');
 });
 
-test('default build mode runs build skeleton and downloader', async () => {
+test('default build mode on mac silicon downloads original upstream Codex.dmg', async () => {
   const calls = [];
-  const builderCalls = [];
 
   const result = await runMain([], {
-    env: { HOME: '/home/tester', PWD: '/tmp/current-dir' },
+    env: {
+      HOME: '/home/tester',
+      PWD: '/tmp/current-dir',
+      RUNTIME_PLATFORM: 'darwin',
+      RUNTIME_ARCH: 'arm64',
+    },
     io: {
       log() {},
       async prompt() { return ''; },
@@ -297,30 +344,19 @@ test('default build mode runs build skeleton and downloader', async () => {
     signer: { async sign() {} },
     releaseApi: {
       async getLatest() {
-        return { tag_name: 'v1.2.3', assets: [] };
-      },
-    },
-    builder: {
-      async run(payload) {
-        builderCalls.push(payload);
-      },
-    },
-    versionResolver: {
-      async resolveFromDmg() {
-        return '1.2.3';
+        throw new Error('release lookup should not run on mac silicon original dmg flow');
       },
     },
   });
 
   assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://persistent.oaistatic.com/codex-app-prod/Codex.dmg');
   assert.equal(calls[0].location, '/tmp/current-dir');
   assert.equal(calls[0].filename, 'Codex.dmg');
-  assert.equal(builderCalls.length, 1);
-  assert.equal(builderCalls[0].location, '/tmp/current-dir');
-  assert.equal(builderCalls[0].outputName, 'CodexIntelMac_1.2.3.dmg');
   assert.equal(result.mode, 'build');
   assert.equal(result.downloaded, true);
-  assert.equal(result.outputName, 'CodexIntelMac_1.2.3.dmg');
+  assert.equal(result.outputName, 'Codex.dmg');
+  assert.equal(result.source, 'original-dmg');
 });
 
 test('cache mode uses absolute default prompt when HOME is missing', async () => {
@@ -359,7 +395,7 @@ test('build mode defaults to process cwd when PWD is missing', async () => {
   const calls = [];
 
   await runMain([], {
-    env: {},
+    env: { RUNTIME_PLATFORM: 'darwin', RUNTIME_ARCH: 'arm64' },
     io: {
       log() {},
       async prompt() { return ''; },
@@ -372,23 +408,52 @@ test('build mode defaults to process cwd when PWD is missing', async () => {
     },
     signer: { async sign() {} },
     releaseApi: { async getLatest() { return {}; } },
-    builder: {},
-    versionResolver: {
-      async resolveFromDmg() {
-        return '1.2.3';
-      },
-    },
   });
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0], process.cwd());
 });
 
-test('build mode honors --workdir for download and builder output', async () => {
+test('build mode on non-mac-silicon fetches asset from release', async () => {
   const calls = [];
-  const builderCalls = [];
+  let releaseCalls = 0;
 
-  await runMain(['--workdir', '/tmp/build-out'], {
+  const result = await runMain(['--workdir', '/tmp/build-out'], {
+    env: { PWD: '/tmp/current-dir', RUNTIME_PLATFORM: 'darwin', RUNTIME_ARCH: 'x64' },
+    io: { log() {}, async prompt() { return ''; } },
+    downloader: {
+      async download(url, location, filename) {
+        calls.push({ url, location, filename });
+        return path.join(location, filename);
+      },
+    },
+    signer: { async sign() {} },
+    releaseApi: {
+      async getLatest() {
+        releaseCalls += 1;
+        return {
+          tag_name: 'v2.0.0',
+          assets: [
+            { name: 'CodexIntelMac_2.0.0.dmg', browser_download_url: 'https://example.com/CodexIntelMac_2.0.0.dmg' },
+          ],
+        };
+      },
+    },
+  });
+
+  assert.equal(releaseCalls, 1);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://example.com/CodexIntelMac_2.0.0.dmg');
+  assert.equal(calls[0].location, '/tmp/build-out');
+  assert.equal(calls[0].filename, 'CodexIntelMac_2.0.0.dmg');
+  assert.equal(result.outputName, 'CodexIntelMac_2.0.0.dmg');
+  assert.equal(result.source, 'release');
+});
+
+test('build mode supports windows release assets', async () => {
+  const calls = [];
+
+  const result = await runMain(['--workdir', '/tmp/build-out', '--platform', 'windows', '--arch', 'arm64', '--format', 'zip'], {
     env: { PWD: '/tmp/current-dir' },
     io: { log() {}, async prompt() { return ''; } },
     downloader: {
@@ -398,55 +463,53 @@ test('build mode honors --workdir for download and builder output', async () => 
       },
     },
     signer: { async sign() {} },
-    releaseApi: { async getLatest() { return { tag_name: 'v2.0.0' }; } },
-    builder: {
-      async run(payload) {
-        builderCalls.push(payload);
-      },
-    },
-    versionResolver: {
-      async resolveFromDmg() {
-        return '2.0.0';
+    releaseApi: {
+      async getLatest() {
+        return {
+          tag_name: 'v2.0.0',
+          assets: [
+            { name: 'CodexWindows_arm64_2.0.0.zip', browser_download_url: 'https://example.com/CodexWindows_arm64_2.0.0.zip' },
+          ],
+        };
       },
     },
   });
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].location, '/tmp/build-out');
-  assert.equal(builderCalls.length, 1);
-  assert.equal(builderCalls[0].location, '/tmp/build-out');
-  assert.equal(builderCalls[0].outputName, 'CodexIntelMac_2.0.0.dmg');
+  assert.equal(calls[0].filename, 'CodexWindows_arm64_2.0.0.zip');
+  assert.equal(result.outputName, 'CodexWindows_arm64_2.0.0.zip');
+  assert.equal(result.source, 'release');
 });
 
-test('build mode supports windows output naming and target propagation', async () => {
-  const builderCalls = [];
+test('build mode infers windows target from runtime host when running on windows', async () => {
+  const calls = [];
 
-  const result = await runMain(['--workdir', '/tmp/build-out', '--platform', 'windows', '--arch', 'arm64', '--format', 'zip'], {
-    env: { PWD: '/tmp/current-dir' },
+  const result = await runMain(['--workdir', '/tmp/build-out'], {
+    env: { PWD: '/tmp/current-dir', RUNTIME_PLATFORM: 'win32', RUNTIME_ARCH: 'arm64' },
     io: { log() {}, async prompt() { return ''; } },
     downloader: {
       async download(url, location, filename) {
+        calls.push({ url, location, filename });
         return path.join(location, filename);
       },
     },
     signer: { async sign() {} },
-    releaseApi: { async getLatest() { return { tag_name: 'v2.0.0' }; } },
-    builder: {
-      async run(payload) {
-        builderCalls.push(payload);
-      },
-    },
-    versionResolver: {
-      async resolveFromDmg() {
-        return '2.0.0';
+    releaseApi: {
+      async getLatest() {
+        return {
+          tag_name: 'v2.0.0',
+          assets: [
+            { name: 'CodexWindows_arm64_2.0.0.zip', browser_download_url: 'https://example.com/CodexWindows_arm64_2.0.0.zip' },
+          ],
+        };
       },
     },
   });
 
-  assert.equal(builderCalls.length, 1);
-  assert.equal(builderCalls[0].outputName, 'CodexWindows_arm64_2.0.0.zip');
-  assert.equal(builderCalls[0].target.platform, 'windows');
-  assert.equal(result.outputName, 'CodexWindows_arm64_2.0.0.zip');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].filename, 'CodexWindows_arm64_2.0.0.zip');
+  assert.equal(result.target.platform, 'windows');
+  assert.equal(result.target.arch, 'arm64');
 });
 
 test('help mode prints usage and exits early', async () => {
@@ -485,5 +548,5 @@ test('parseGithubRepoFromUrl supports common GitHub repository URL formats', () 
 });
 
 test('resolveGithubRepo falls back to package.json repository URL', () => {
-  assert.equal(resolveGithubRepo(), '0x0a0d/get-codex-mac-intel');
+  assert.equal(resolveGithubRepo(), '0x0a0d/get-codex');
 });

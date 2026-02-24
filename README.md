@@ -1,85 +1,105 @@
-# get-codex-mac-intel
+# Get Codex - Codex for Desktop
 
-CLI to build/download Codex artifacts from upstream `Codex.dmg`, with support for:
+Bring Codex to **Intel Mac** and **Windows** with a simple CLI workflow for build, download, and packaging. 🚀
 
-- Mac Intel DMG
-- Windows portable ZIP (x64/arm64)
+[![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/0x0a0d/get-codex)
+[![Version](https://img.shields.io/badge/version-1.0.3-blue)](https://github.com/0x0a0d/get-codex)
+[![License: ISC](https://img.shields.io/badge/license-ISC-lightgrey)](./LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/0x0a0d/get-codex?style=social)](https://github.com/0x0a0d/get-codex)
 
-## Quick start
+![Get Codex Screenshot](./codex.png)
 
-Entrypoint:
+## Introduction
 
-```bash
-npx get-codex-mac-intel
-```
+**Get Codex** is a desktop-focused toolchain that helps users on platforms often left behind by official releases:
 
-Help:
+- macOS Intel (`.dmg`)
+- Windows x64 / arm64 (`.zip`)
 
-```bash
-npx get-codex-mac-intel --help
-```
+It automates artifact resolution, local build flow, and optional signing steps.
 
-## Modes
+## Features
 
-### 1) Build mode (default)
+- ⚡ Build mode for Intel Mac and Windows targets
+- 📦 Cache/download mode for latest release artifacts
+- 🪟 Windows ZIP output (x64, arm64)
+- 🍎 macOS Intel DMG output
+- 🔐 Optional signing flow for macOS artifacts
+- 🧩 Simple CLI flags for platform, arch, format, and workdir
 
-```bash
-npx get-codex-mac-intel
-# or
-npx get-codex-mac-intel --build
-```
+## Tech Stack
 
-- By default, the **current working directory (cwd)** is used for source download + output.
-- Use `-w, --workdir <path>` to set the working directory.
-- Default target output: `CodexIntelMac_<version>.dmg`.
-- Windows target output:
-  - `CodexWindows_x64_<version>.zip`
-  - `CodexWindows_arm64_<version>.zip`
-- `version` is read from source `Codex.dmg` -> `Codex.app/Contents/Info.plist`:
-  - `CFBundleShortVersionString`
-  - fallback: `CFBundleVersion`
+- **Runtime:** Node.js
+- **Language:** JavaScript (CommonJS)
+- **Testing:** Node.js built-in test runner (`node --test`)
+- **Packaging Scripts:** Custom Node scripts for macOS/Windows build artifacts
 
-Target flags:
+## Installation
 
-- `--platform <mac|windows>`
-- `--arch <x64|arm64>` (for windows)
-- `--format <dmg|zip>`
-
-Example:
+### Option 1: Run directly with NPX
 
 ```bash
-npx get-codex-mac-intel --build --workdir ~/Downloads
-npx get-codex-mac-intel --build --platform windows --arch arm64 --format zip --workdir ~/Downloads
+npx get-codex --help
 ```
 
-### 2) Cache mode
+### Option 2: Clone and run locally
 
 ```bash
-npx get-codex-mac-intel --cache
+git clone https://github.com/0x0a0d/get-codex.git
+cd get-codex
+npm install
+npm test
 ```
 
-Flow:
-1. Shows latest release info.
-2. Prompts for `Download location`.
-3. If empty -> skip download.
-4. If a path is provided -> download latest release asset.
-5. For Mac target, asks whether to sign the downloaded file.
-6. For Windows target, signing step is skipped.
+## Usage
 
-Windows cache example:
+### Show help
 
 ```bash
-npx get-codex-mac-intel --cache --platform windows --arch x64 --format zip
+npx get-codex --help
 ```
 
-### 3) Sign mode
+### Build mode (default)
 
 ```bash
-npx get-codex-mac-intel --sign <path>
+npx get-codex
 ```
-
-Example:
 
 ```bash
-npx get-codex-mac-intel --sign /Applications/Codex.app
+npx get-codex --build --workdir /absolute/path/to/workdir
 ```
+
+### Build for Windows arm64 ZIP
+
+```bash
+npx get-codex --build --platform windows --arch arm64 --format zip --workdir /absolute/path/to/workdir
+```
+
+### Cache/download mode
+
+```bash
+npx get-codex --cache --platform windows --arch x64 --format zip
+```
+
+### Sign mode
+
+```bash
+npx get-codex --sign /Applications/Codex.app
+```
+
+## Contributing
+
+Contributions are welcome! 🙌
+
+```bash
+git checkout -b feat/your-feature
+npm test
+git commit -m "feat: add your feature"
+git push origin feat/your-feature
+```
+
+Then open a Pull Request.
+
+## License
+
+Licensed under the **ISC** License.
