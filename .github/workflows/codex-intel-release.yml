@@ -274,6 +274,56 @@ jobs:
           name: codex-payload-metadata
           path: ${{ runner.temp }}/codex-payload
 
+      - name: Prepare windows build package.json
+        id: buildpkg
+        shell: pwsh
+        run: |
+          $payloadDir = Join-Path $env:RUNNER_TEMP "codex-payload"
+          $metadataPath = Join-Path $payloadDir "payload-metadata.json"
+          if (!(Test-Path $metadataPath)) { throw "Missing payload metadata: $metadataPath" }
+
+          $meta = Get-Content $metadataPath | ConvertFrom-Json
+          $buildDir = Join-Path $env:RUNNER_TEMP "windows-build-${{ matrix.arch }}"
+          New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
+
+          $pkg = @{
+            name = "codex-windows-build-${{ matrix.arch }}"
+            description = "Temporary package manifest for Codex Windows CI build"
+            author = "codex-intel-release-ci"
+            private = $true
+            version = "1.0.0"
+            dependencies = @{
+              "better-sqlite3" = "$($meta.betterSqlite3Version)"
+              "node-pty" = "$($meta.nodePtyVersion)"
+              "@openai/codex" = "latest"
+            }
+            devDependencies = @{
+              electron = "$($meta.electronVersion)"
+              "electron-builder" = "24.13.3"
+              "rcedit" = "4.0.1"
+            }
+          }
+
+          $packageJsonPath = Join-Path $buildDir "package.json"
+          $pkg | ConvertTo-Json -Depth 10 | Out-File -FilePath $packageJsonPath -Encoding utf8
+
+          "build_dir=$buildDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "package_json_path=$packageJsonPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Setup Node.js with npm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: ${{ steps.buildpkg.outputs.package_json_path }}
+
+      - name: Install windows build dependencies
+        shell: pwsh
+        env:
+          BUILD_DIR: ${{ steps.buildpkg.outputs.build_dir }}
+        run: |
+          npm install --prefix "$env:BUILD_DIR" --no-audit --no-fund
+
       - name: Build Windows portable zip
         id: winmeta
         shell: pwsh
@@ -285,7 +335,8 @@ jobs:
           $installerName = "CodexInstaller_${{ matrix.arch }}_${env:SAFE_VERSION}.exe"
           $installerPath = Join-Path $env:RUNNER_TEMP $installerName
           $payloadDir = Join-Path $env:RUNNER_TEMP "codex-payload"
-          node scripts/build-windows-zip.js --arch "${{ matrix.arch }}" --payload-dir "$payloadDir" --output "$artifactPath" --installer-output "$installerPath"
+          $buildDir = "${{ steps.buildpkg.outputs.build_dir }}"
+          node scripts/build-windows-zip.js --arch "${{ matrix.arch }}" --project-dir "$buildDir" --payload-dir "$payloadDir" --output "$artifactPath" --installer-output "$installerPath"
           "artifact_name=$artifactName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "artifact_path=$artifactPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "installer_name=$installerName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append

@@ -105,6 +105,18 @@ test('workflow builds and uploads NSIS installer artifacts for windows matrix', 
   assert.match(content, /gh release upload "\$TAG" "\$INSTALLER_PATH#\$INSTALLER_NAME" --clobber/);
 });
 
+test('workflow separates windows npm install with setup-node cache based on generated package.json', () => {
+  const content = readWorkflow();
+
+  assert.match(content, /name:\s*Prepare windows build package\.json/);
+  assert.match(content, /uses:\s*actions\/setup-node@v4/);
+  assert.match(content, /cache:\s*'npm'/);
+  assert.match(content, /cache-dependency-path:\s*\$\{\{\s*steps\.buildpkg\.outputs\.package_json_path\s*\}\}/);
+  assert.match(content, /name:\s*Install windows build dependencies/);
+  assert.match(content, /npm install --prefix "\$env:BUILD_DIR" --no-audit --no-fund/);
+  assert.match(content, /--project-dir "\$buildDir"/);
+});
+
 test('workflow uploads and downloads payload metadata artifact between mac and windows jobs', () => {
   const content = readWorkflow();
 

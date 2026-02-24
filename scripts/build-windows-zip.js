@@ -16,6 +16,7 @@ function parseArgs(argv = process.argv.slice(2)) {
   let arch = process.env.BUILD_ARCH || 'x64';
   let payloadDir = '';
   let installerOutputPath = '';
+  let projectDir = '';
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -59,6 +60,16 @@ function parseArgs(argv = process.argv.slice(2)) {
       continue;
     }
 
+    if (arg === '--project-dir') {
+      const candidate = argv[i + 1];
+      if (!candidate || candidate.startsWith('-')) {
+        die('--project-dir requires a path');
+      }
+      projectDir = candidate;
+      i += 1;
+      continue;
+    }
+
     if (arg.startsWith('-')) {
       die(`Unknown option: ${arg}`);
     }
@@ -72,16 +83,21 @@ function parseArgs(argv = process.argv.slice(2)) {
     die('--payload-dir is required');
   }
 
+  if (!projectDir) {
+    die('--project-dir is required');
+  }
+
   return {
     outputPath: path.resolve(outputPath),
     payloadDir: path.resolve(payloadDir),
     installerOutputPath: installerOutputPath ? path.resolve(installerOutputPath) : '',
+    projectDir: path.resolve(projectDir),
     arch: String(arch).trim().toLowerCase(),
   };
 }
 
 function build() {
-  const { outputPath, payloadDir, installerOutputPath, arch } = parseArgs();
+  const { outputPath, payloadDir, installerOutputPath, projectDir, arch } = parseArgs();
   const outputDir = path.dirname(outputPath);
   fs.mkdirSync(outputDir, { recursive: true });
   if (installerOutputPath) {
@@ -135,36 +151,20 @@ function build() {
 
   const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), `codex-windows-${arch}-`));
   try {
-    const projectDir = path.join(stagingDir, 'project');
     const appDir = path.join(stagingDir, 'Codex');
-    fs.mkdirSync(projectDir, { recursive: true });
     fs.mkdirSync(appDir, { recursive: true });
 
     const npmArch = arch === 'arm64' ? 'arm64' : 'x64';
 
-    fs.writeFileSync(path.join(projectDir, 'package.json'), JSON.stringify({
-      name: 'codex-windows-portable-build',
-      private: true,
-      version: '1.0.0',
-      dependencies: {
-        electron: electronVersion,
-        'better-sqlite3': betterSqlite3Version,
-        'node-pty': nodePtyVersion,
-        '@openai/codex': 'latest',
-      },
-      devDependencies: {
-        '@electron/rebuild': '3.7.2',
-      },
-    }, null, 2));
+    const projectPackagePath = path.join(projectDir, 'package.json');
+    if (!fs.existsSync(projectPackagePath)) {
+      die(`project package.json not found: ${projectPackagePath}`);
+    }
 
-    runCommand('npm', ['install', '--no-audit', '--no-fund'], {
-      cwd: projectDir,
-      env: {
-        ...process.env,
-        npm_config_platform: 'win32',
-        npm_config_arch: npmArch,
-      },
-    });
+    const projectNodeModules = path.join(projectDir, 'node_modules');
+    if (!fs.existsSync(projectNodeModules)) {
+      die(`project node_modules not found: ${projectNodeModules}. Run npm install in a separate CI step first.`);
+    }
 
     runCommand('npx', [
       '--yes',
@@ -314,6 +314,8 @@ function build() {
         'electron-builder',
         '--win',
         'nsis',
+        '--publish',
+        'never',
         `--${npmArch}`,
         '--prepackaged',
         appDir,
