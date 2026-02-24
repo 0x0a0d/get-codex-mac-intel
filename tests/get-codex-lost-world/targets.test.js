@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeTarget } = require('../../lib/get-codex/targets');
+const { normalizeTarget } = require('../../lib/get-codex-lost-world/targets');
 
 test('normalizeTarget defaults to mac x64 dmg', () => {
   assert.deepEqual(normalizeTarget({}), {

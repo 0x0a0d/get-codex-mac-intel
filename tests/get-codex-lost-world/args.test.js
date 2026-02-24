@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parseArgs } = require('../../lib/get-codex/args');
+const { parseArgs } = require('../../lib/get-codex-lost-world/args');
 
 test('parseArgs defaults to build mode', () => {
   assert.deepEqual(parseArgs([]), { mode: 'build' });

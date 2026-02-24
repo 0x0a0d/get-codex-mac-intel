@@ -1,13 +1,13 @@
-# Get Codex - Codex for Desktop
+# Get Codex Lost World - Codex for Desktop
 
 Bring Codex to **Intel Mac** and **Windows** with a simple CLI workflow for build, download, and packaging. 🚀
 
-[![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/0x0a0d/get-codex)
-[![Version](https://img.shields.io/badge/version-1.0.3-blue)](https://github.com/0x0a0d/get-codex)
+[![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/0x0a0d/get-codex-lost-world)
+[![Version](https://img.shields.io/badge/version-1.0.3-blue)](https://github.com/0x0a0d/get-codex-lost-world)
 [![License: ISC](https://img.shields.io/badge/license-ISC-lightgrey)](./LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/0x0a0d/get-codex?style=social)](https://github.com/0x0a0d/get-codex)
+[![GitHub Stars](https://img.shields.io/github/stars/0x0a0d/get-codex-lost-world?style=social)](https://github.com/0x0a0d/get-codex-lost-world)
 
-![Get Codex Screenshot](./codex.png)
+![Get Codex Lost World Screenshot](./codex.png)
 
 ## Introduction
 
@@ -39,14 +39,14 @@ It automates artifact resolution, local build flow, and optional signing steps.
 ### Option 1: Run directly with NPX
 
 ```bash
-npx get-codex --help
+npx get-codex-lost-world --help
 ```
 
 ### Option 2: Clone and run locally
 
 ```bash
-git clone https://github.com/0x0a0d/get-codex.git
-cd get-codex
+git clone https://github.com/0x0a0d/get-codex-lost-world.git
+cd get-codex-lost-world
 npm install
 npm test
 ```
@@ -56,35 +56,35 @@ npm test
 ### Show help
 
 ```bash
-npx get-codex --help
+npx get-codex-lost-world --help
 ```
 
 ### Build mode (default)
 
 ```bash
-npx get-codex
+npx get-codex-lost-world
 ```
 
 ```bash
-npx get-codex --build --workdir /absolute/path/to/workdir
+npx get-codex-lost-world --build --workdir /absolute/path/to/workdir
 ```
 
 ### Build for Windows arm64 ZIP
 
 ```bash
-npx get-codex --build --platform windows --arch arm64 --format zip --workdir /absolute/path/to/workdir
+npx get-codex-lost-world --build --platform windows --arch arm64 --format zip --workdir /absolute/path/to/workdir
 ```
 
 ### Cache/download mode
 
 ```bash
-npx get-codex --cache --platform windows --arch x64 --format zip
+npx get-codex-lost-world --cache --platform windows --arch x64 --format zip
 ```
 
 ### Sign mode
 
 ```bash
-npx get-codex --sign /Applications/Codex.app
+npx get-codex-lost-world --sign /Applications/Codex.app
 ```
 
 ## Contributing

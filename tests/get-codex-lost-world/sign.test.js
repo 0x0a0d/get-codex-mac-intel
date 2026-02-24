@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildSignCommand } = require('../../lib/get-codex/sign');
+const { buildSignCommand } = require('../../lib/get-codex-lost-world/sign');
 
 test('buildSignCommand returns ad-hoc codesign command', () => {
   assert.equal(

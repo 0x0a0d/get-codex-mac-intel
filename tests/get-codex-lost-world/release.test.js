@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { summarizeRelease, pickLatestDmgAsset, pickLatestAssetForTarget } = require('../../lib/get-codex/release');
+const { summarizeRelease, pickLatestDmgAsset, pickLatestAssetForTarget } = require('../../lib/get-codex-lost-world/release');
 
 test('summarizeRelease returns version, datetime, notes', () => {
   const release = {

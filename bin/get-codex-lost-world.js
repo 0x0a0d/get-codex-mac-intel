@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-const { runMain, usage } = require('../lib/get-codex/main');
+const { runMain, usage } = require('../lib/get-codex-lost-world/main');
 
 function printTargetShortcuts() {
   const message = [
@@ -13,7 +13,7 @@ function printTargetShortcuts() {
     '  --windows-arm64    Build/download for Windows arm64 (.zip)',
     '',
     'Example:',
-    '  npx get-codex --windows-x64 --workdir /tmp/codex',
+    '  npx get-codex-lost-world --windows-x64 --workdir /tmp/codex',
   ].join('\n');
 
   process.stdout.write(`${message}\n`);

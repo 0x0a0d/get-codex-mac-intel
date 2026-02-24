@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { runMain, parseGithubRepoFromUrl, resolveGithubRepo } = require('../../lib/get-codex/main');
+const { runMain, parseGithubRepoFromUrl, resolveGithubRepo } = require('../../lib/get-codex-lost-world/main');
 
 
 test('cache mode logs version', async () => {
@@ -548,5 +548,5 @@ test('parseGithubRepoFromUrl supports common GitHub repository URL formats', () 
 });
 
 test('resolveGithubRepo falls back to package.json repository URL', () => {
-  assert.equal(resolveGithubRepo(), '0x0a0d/get-codex');
+  assert.equal(resolveGithubRepo(), '0x0a0d/get-codex-lost-world');
 });

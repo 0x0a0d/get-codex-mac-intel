@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { createLocalBuilder } = require('../../lib/get-codex/local-builder');
+const { createLocalBuilder } = require('../../lib/get-codex-lost-world/local-builder');
 
 test('local builder validates required inputs', async () => {
   const builder = createLocalBuilder({

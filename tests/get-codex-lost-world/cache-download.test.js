@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { resolveCacheDownload } = require('../../lib/get-codex/cache-download');
+const { resolveCacheDownload } = require('../../lib/get-codex-lost-world/cache-download');
 
 test('resolveCacheDownload returns shouldDownload=false for empty input', () => {
   assert.deepEqual(resolveCacheDownload(''), { shouldDownload: false, location: '' });
