@@ -127,6 +127,50 @@ test('cache mode with location input triggers download', async () => {
   assert.equal(calls[0].filename, 'CodexIntelMac_1.2.3.dmg');
 });
 
+test('cache mode honors --workdir and skips download location prompt', async () => {
+  const calls = [];
+  let promptCount = 0;
+
+  await runMain(['--cache', '--workdir', '/tmp/cache-out'], {
+    env: { HOME: '/home/tester' },
+    releaseApi: {
+      async getLatest() {
+        return {
+          tag_name: 'v1.2.3',
+          published_at: '2026-02-20T00:00:00Z',
+          body: 'Release note body',
+          assets: [
+            { name: 'CodexIntelMac_1.2.3.dmg', browser_download_url: 'https://example.com/CodexIntelMac_1.2.3.dmg' },
+          ],
+        };
+      },
+    },
+    io: {
+      log() {},
+      async prompt(question) {
+        promptCount += 1;
+        if (question.includes('Sign downloaded file')) {
+          return 'n';
+        }
+        throw new Error('Download location prompt should be skipped when --workdir is provided');
+      },
+    },
+    downloader: {
+      async download(url, location, filename) {
+        calls.push({ url, location, filename });
+        return path.join(location, filename);
+      },
+    },
+    signer: {
+      async sign() {},
+    },
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].location, '/tmp/cache-out');
+  assert.equal(promptCount, 1);
+});
+
 test('cache mode prompts sign and yes triggers signer', async () => {
   const signed = [];
 
