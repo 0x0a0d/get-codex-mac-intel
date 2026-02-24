@@ -19,11 +19,13 @@ permissions:
   contents: write
 
 jobs:
-  get-codex-lost-world-release:
+  check-update:
     runs-on: macos-latest
     timeout-minutes: 30
     outputs:
       should_build: ${{ steps.decision.outputs.should_build }}
+      reason: ${{ steps.decision.outputs.reason }}
+      last_modified: ${{ steps.remote.outputs.last_modified }}
       release_tag: ${{ steps.meta.outputs.release_tag }}
       version: ${{ steps.meta.outputs.version }}
       safe_version: ${{ steps.meta.outputs.safe_version }}
@@ -88,14 +90,15 @@ jobs:
 
       - name: Download Codex.dmg
         if: ${{ steps.decision.outputs.should_build == 'true' }}
+        id: download
         shell: bash
         run: |
           set -euo pipefail
-          curl -fL "$SOURCE_URL" -o Codex.dmg
-          echo "source_dmg_path=$PWD/Codex.dmg" >> "$GITHUB_OUTPUT"
-        id: download
+          source_dmg_path="$RUNNER_TEMP/Codex.dmg"
+          curl -fL "$SOURCE_URL" -o "$source_dmg_path"
+          echo "source_dmg_path=$source_dmg_path" >> "$GITHUB_OUTPUT"
 
-      - name: Read version and prepare artifact metadata
+      - name: Read version and prepare metadata
         if: ${{ steps.decision.outputs.should_build == 'true' }}
         id: meta
         shell: bash
@@ -118,23 +121,11 @@ jobs:
           fi
 
           safe_version="$(printf '%s' "$version" | tr -cs 'A-Za-z0-9._-' '_')"
-          artifact_name="CodexIntelMac_${safe_version}.dmg"
+          release_tag="$safe_version"
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "safe_version=$safe_version" >> "$GITHUB_OUTPUT"
-          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
-          echo "artifact_path=$PWD/$artifact_name" >> "$GITHUB_OUTPUT"
-          echo "release_tag=$safe_version" >> "$GITHUB_OUTPUT"
-
-      - name: Build Intel DMG
-        if: ${{ steps.decision.outputs.should_build == 'true' }}
-        shell: bash
-        env:
-          SOURCE_DMG_PATH: ${{ steps.download.outputs.source_dmg_path }}
-          ARTIFACT_PATH: ${{ steps.meta.outputs.artifact_path }}
-        run: |
-          set -euo pipefail
-          node scripts/build-intel-dmg.js --output "$ARTIFACT_PATH" "$SOURCE_DMG_PATH"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
 
       - name: Extract Codex payload metadata for windows jobs
         if: ${{ steps.decision.outputs.should_build == 'true' }}
@@ -200,53 +191,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.meta.outputs.release_tag }}
           VERSION: ${{ steps.meta.outputs.version }}
-          ARTIFACT_PATH: ${{ steps.meta.outputs.artifact_path }}
-          ARTIFACT_NAME: ${{ steps.meta.outputs.artifact_name }}
           NOTES_FILE: ${{ steps.notes.outputs.notes_file }}
         run: |
           set -euo pipefail
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --title "Get Codex Lost World $VERSION" --notes-file "$NOTES_FILE"
-            gh release upload "$TAG" "$ARTIFACT_PATH#$ARTIFACT_NAME" --clobber
           else
-            gh release create "$TAG" "$ARTIFACT_PATH#$ARTIFACT_NAME" --title "Get Codex Lost World $VERSION" --notes-file "$NOTES_FILE"
+            gh release create "$TAG" --title "Get Codex Lost World $VERSION" --notes-file "$NOTES_FILE"
           fi
-
-      - name: Update ci-cache branch state
-        if: ${{ steps.decision.outputs.should_build == 'true' }}
-        shell: bash
-        env:
-          LAST_MODIFIED: ${{ steps.remote.outputs.last_modified }}
-          VERSION: ${{ steps.meta.outputs.version }}
-          RELEASE_TAG: ${{ steps.meta.outputs.release_tag }}
-        run: |
-          set -euo pipefail
-
-          git fetch origin ci-cache:ci-cache || true
-
-          if git rev-parse --verify ci-cache >/dev/null 2>&1; then
-            git checkout ci-cache
-          else
-            git checkout --orphan ci-cache
-            git rm -rf . >/dev/null 2>&1 || true
-          fi
-
-          mkdir -p .ci
-
-          node -e "const fs=require('node:fs'); const state={lastModified:process.env.LAST_MODIFIED||'',version:process.env.VERSION||'',releaseTag:process.env.RELEASE_TAG||'',processedAt:new Date().toISOString()}; fs.writeFileSync('.ci/cache-state.json', JSON.stringify(state, null, 2) + '\n');"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add .ci/cache-state.json
-          if git diff --cached --quiet; then
-            echo "No cache changes to commit"
-            exit 0
-          fi
-
-          git commit -m "ci: update codex cache state"
-          git push origin ci-cache
 
       - name: Skip summary when unchanged
         if: ${{ steps.decision.outputs.should_build != 'true' }}
@@ -254,18 +207,54 @@ jobs:
         run: |
           echo "No update detected; skipping build and release."
 
-  get-codex-lost-world-windows-release:
+  build-mac-intel:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    needs:
+      - check-update
+    if: ${{ needs.check-update.outputs.should_build == 'true' }}
+    env:
+      SOURCE_URL: https://persistent.oaistatic.com/codex-app-prod/Codex.dmg
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Intel DMG
+        id: macmeta
+        shell: bash
+        env:
+          SAFE_VERSION: ${{ needs.check-update.outputs.safe_version }}
+        run: |
+          set -euo pipefail
+          source_dmg_path="$RUNNER_TEMP/Codex.dmg"
+          artifact_name="CodexIntelMac_${SAFE_VERSION}.dmg"
+          artifact_path="$RUNNER_TEMP/$artifact_name"
+          curl -fL "$SOURCE_URL" -o "$source_dmg_path"
+          node scripts/build-intel-dmg.js --output "$artifact_path" "$source_dmg_path"
+          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
+          echo "artifact_path=$artifact_path" >> "$GITHUB_OUTPUT"
+
+      - name: Upload mac artifact to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.check-update.outputs.release_tag }}
+          ARTIFACT_PATH: ${{ steps.macmeta.outputs.artifact_path }}
+          ARTIFACT_NAME: ${{ steps.macmeta.outputs.artifact_name }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" "$ARTIFACT_PATH#$ARTIFACT_NAME" --clobber
+
+  build-windows:
     runs-on: windows-latest
     timeout-minutes: 30
     needs:
-      - get-codex-lost-world-release
-    if: ${{ needs.get-codex-lost-world-release.outputs.should_build == 'true' }}
+      - check-update
+    if: ${{ needs.check-update.outputs.should_build == 'true' }}
     strategy:
       fail-fast: false
       matrix:
         arch: [x64, arm64]
-    env:
-      SOURCE_URL: https://persistent.oaistatic.com/codex-app-prod/Codex.dmg
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -330,7 +319,7 @@ jobs:
         id: winmeta
         shell: pwsh
         env:
-          SAFE_VERSION: ${{ needs.get-codex-lost-world-release.outputs.safe_version }}
+          SAFE_VERSION: ${{ needs.check-update.outputs.safe_version }}
         run: |
           $artifactName = "CodexWindows_${{ matrix.arch }}_${env:SAFE_VERSION}.zip"
           $artifactPath = Join-Path $env:RUNNER_TEMP $artifactName
@@ -397,7 +386,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.get-codex-lost-world-release.outputs.release_tag }}
+          TAG: ${{ needs.check-update.outputs.release_tag }}
           ARTIFACT_PATH: ${{ steps.winmeta.outputs.artifact_path }}
           ARTIFACT_NAME: ${{ steps.winmeta.outputs.artifact_name }}
           INSTALLER_PATH: ${{ steps.winmeta.outputs.installer_path }}
@@ -406,3 +395,51 @@ jobs:
           set -euo pipefail
           gh release upload "$TAG" "$ARTIFACT_PATH#$ARTIFACT_NAME" --clobber
           gh release upload "$TAG" "$INSTALLER_PATH#$INSTALLER_NAME" --clobber
+
+  update-cache-state:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    needs:
+      - check-update
+      - build-mac-intel
+      - build-windows
+    if: ${{ needs.check-update.outputs.should_build == 'true' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update ci-cache branch state
+        shell: bash
+        env:
+          LAST_MODIFIED: ${{ needs.check-update.outputs.last_modified }}
+          VERSION: ${{ needs.check-update.outputs.version }}
+          RELEASE_TAG: ${{ needs.check-update.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          git fetch origin ci-cache:ci-cache || true
+
+          if git rev-parse --verify ci-cache >/dev/null 2>&1; then
+            git checkout ci-cache
+          else
+            git checkout --orphan ci-cache
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          mkdir -p .ci
+
+          node -e "const fs=require('node:fs'); const state={lastModified:process.env.LAST_MODIFIED||'',version:process.env.VERSION||'',releaseTag:process.env.RELEASE_TAG||'',processedAt:new Date().toISOString()}; fs.writeFileSync('.ci/cache-state.json', JSON.stringify(state, null, 2) + '\n');"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add .ci/cache-state.json
+          if git diff --cached --quiet; then
+            echo "No cache changes to commit"
+            exit 0
+          fi
+
+          git commit -m "ci: update codex cache state"
+          git push origin ci-cache

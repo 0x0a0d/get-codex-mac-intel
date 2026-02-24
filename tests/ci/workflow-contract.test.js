@@ -65,33 +65,38 @@ test('workflow defines top-level concurrency guard', () => {
   assert.match(content, /concurrency:\s*[\s\S]*cancel-in-progress:\s*false/);
 });
 
-test('workflow fetches Last-Modified via curl -fsSLI', () => {
+test('workflow has separate check-update job for Last-Modified decision', () => {
   const content = readWorkflow();
 
-  assert.match(content, /curl\s+-fsSLI\s+"\$SOURCE_URL"/);
-  assert.match(content, /last-modified:/i);
-});
-
-test('workflow uses check-update contract outputs', () => {
-  const content = readWorkflow();
-
+  assert.match(content, /check-update:/);
+  assert.match(content, /name:\s*Fetch remote Last-Modified header/);
   assert.match(content, /node\s+scripts\/ci\/check-update\.js/);
   assert.match(content, /steps\.decision\.outputs\.should_build/);
   assert.match(content, /steps\.decision\.outputs\.reason/);
 });
 
-test('workflow builds intel dmg and names output from VERSION', () => {
+test('workflow defines parallel build jobs that depend on check-update', () => {
   const content = readWorkflow();
 
-  assert.match(content, /PlistBuddy[\s\S]*CFBundleShortVersionString/);
-  assert.match(content, /artifact_name="CodexIntelMac_\$\{safe_version\}\.dmg"/);
-  assert.match(content, /node\s+scripts\/build-intel-dmg\.js\s+--output\s+"\$ARTIFACT_PATH"\s+"\$SOURCE_DMG_PATH"/);
+  assert.match(content, /build-mac-intel:/);
+  assert.match(content, /build-windows:/);
+  assert.match(content, /build-mac-intel:[\s\S]*needs:\s*[\s\S]*-\s*check-update/);
+  assert.match(content, /build-windows:[\s\S]*needs:\s*[\s\S]*-\s*check-update/);
+  assert.match(content, /if:\s*\$\{\{\s*needs\.check-update\.outputs\.should_build\s*==\s*'true'\s*\}\}/);
+});
+
+test('workflow builds intel dmg artifact in dedicated mac job', () => {
+  const content = readWorkflow();
+
+  assert.match(content, /name:\s*Build Intel DMG/);
+  assert.match(content, /scripts\/build-intel-dmg\.js/);
+  assert.match(content, /Upload mac artifact to release/);
 });
 
 test('workflow defines windows matrix for x64 and arm64 portable zip', () => {
   const content = readWorkflow();
 
-  assert.match(content, /get-codex-lost-world-windows-release:/);
+  assert.match(content, /build-windows:/);
   assert.match(content, /matrix:\s*[\s\S]*arch:\s*\[x64, arm64\]/);
   assert.match(content, /scripts\/build-windows-zip\.js/);
   assert.match(content, /CodexWindows_\$\{\{ matrix\.arch \}\}_\$\{env:SAFE_VERSION\}\.zip/);
@@ -117,7 +122,7 @@ test('workflow separates windows npm install with setup-node cache based on gene
   assert.match(content, /--project-dir "\$buildDir"/);
 });
 
-test('workflow uploads and downloads payload metadata artifact between mac and windows jobs', () => {
+test('workflow uploads and downloads payload metadata artifact between check and windows jobs', () => {
   const content = readWorkflow();
 
   assert.match(content, /scripts\/ci\/extract-codex-payload\.js/);
@@ -126,9 +131,11 @@ test('workflow uploads and downloads payload metadata artifact between mac and w
   assert.match(content, /uses:\s*actions\/download-artifact@v4/);
 });
 
-test('workflow updates ci-cache state with required fields', () => {
+test('workflow updates ci-cache state after all build jobs complete', () => {
   const content = readWorkflow();
 
+  assert.match(content, /update-cache-state:/);
+  assert.match(content, /update-cache-state:[\s\S]*needs:[\s\S]*-\s*check-update[\s\S]*-\s*build-mac-intel[\s\S]*-\s*build-windows/);
   assert.match(content, /cache-state\.json/);
   assert.match(content, /lastModified/);
   assert.match(content, /version/);
