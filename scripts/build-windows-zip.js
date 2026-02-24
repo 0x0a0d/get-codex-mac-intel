@@ -15,6 +15,7 @@ function parseArgs(argv = process.argv.slice(2)) {
   let outputPath = '';
   let arch = process.env.BUILD_ARCH || 'x64';
   let payloadDir = '';
+  let installerOutputPath = '';
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -48,6 +49,16 @@ function parseArgs(argv = process.argv.slice(2)) {
       continue;
     }
 
+    if (arg === '--installer-output') {
+      const candidate = argv[i + 1];
+      if (!candidate || candidate.startsWith('-')) {
+        die('--installer-output requires a file path');
+      }
+      installerOutputPath = candidate;
+      i += 1;
+      continue;
+    }
+
     if (arg.startsWith('-')) {
       die(`Unknown option: ${arg}`);
     }
@@ -64,14 +75,18 @@ function parseArgs(argv = process.argv.slice(2)) {
   return {
     outputPath: path.resolve(outputPath),
     payloadDir: path.resolve(payloadDir),
+    installerOutputPath: installerOutputPath ? path.resolve(installerOutputPath) : '',
     arch: String(arch).trim().toLowerCase(),
   };
 }
 
 function build() {
-  const { outputPath, payloadDir, arch } = parseArgs();
+  const { outputPath, payloadDir, installerOutputPath, arch } = parseArgs();
   const outputDir = path.dirname(outputPath);
   fs.mkdirSync(outputDir, { recursive: true });
+  if (installerOutputPath) {
+    fs.mkdirSync(path.dirname(installerOutputPath), { recursive: true });
+  }
 
   const metadataPath = path.join(payloadDir, 'payload-metadata.json');
   const resourcesPath = path.join(payloadDir, 'payload', 'Resources');
@@ -175,7 +190,7 @@ function build() {
     const electronExe = path.join(appDir, 'electron.exe');
     const codexExePath = path.join(appDir, 'Codex.exe');
     if (fs.existsSync(electronExe)) {
-      fs.copyFileSync(electronExe, codexExePath);
+      fs.renameSync(electronExe, codexExePath);
     } else {
       die('electron.exe not found in electron dist output');
     }
@@ -230,6 +245,7 @@ function build() {
     const files = walk(vendorRoot, []);
     const codexExe = files.find((f) => /codex\.exe$/i.test(f) && /win32/i.test(f));
     const rgExe = files.find((f) => /rg\.exe$/i.test(f) && /win32/i.test(f));
+    const icoCandidates = files.filter((f) => /\.ico$/i.test(f) && /(codex|icon|logo)/i.test(path.basename(f)));
     if (codexExe) {
       fs.copyFileSync(codexExe, path.join(appResources, 'codex.exe'));
       fs.copyFileSync(codexExe, path.join(targetUnpacked, 'codex.exe'));
@@ -240,6 +256,11 @@ function build() {
       fs.copyFileSync(rgExe, path.join(appResources, 'rg.exe'));
     } else {
       die('failed to locate windows rg.exe from installed dependencies');
+    }
+
+    const iconPath = icoCandidates.length > 0 ? icoCandidates[0] : '';
+    if (iconPath) {
+      runCommand('npx', ['--yes', 'rcedit', codexExePath, '--set-icon', iconPath], { cwd: projectDir });
     }
 
     fs.writeFileSync(path.join(appDir, 'build-info.txt'), [
@@ -258,6 +279,55 @@ function build() {
 
     if (result.status !== 0) {
       die('failed to create windows zip artifact');
+    }
+
+    if (installerOutputPath) {
+      const buildVersion = String(metadata.version || '0.0.0').replace(/[^0-9.]/g, '.') || '0.0.0';
+      const installerConfigPath = path.join(projectDir, 'electron-builder.json');
+      fs.writeFileSync(installerConfigPath, JSON.stringify({
+        appId: 'com.openai.codex',
+        productName: 'Codex',
+        directories: {
+          output: path.dirname(installerOutputPath),
+        },
+        artifactName: path.basename(installerOutputPath),
+        win: {
+          target: [
+            {
+              target: 'nsis',
+              arch: [npmArch],
+            },
+          ],
+          icon: iconPath || undefined,
+        },
+        nsis: {
+          oneClick: false,
+          perMachine: false,
+          allowToChangeInstallationDirectory: true,
+          createDesktopShortcut: true,
+          shortcutName: 'Codex',
+        },
+      }, null, 2));
+
+      runCommand('npx', [
+        '--yes',
+        'electron-builder',
+        '--win',
+        'nsis',
+        `--${npmArch}`,
+        '--prepackaged',
+        appDir,
+        '--config',
+        installerConfigPath,
+        '--projectDir',
+        projectDir,
+        '--config.extraMetadata.version',
+        buildVersion,
+      ], { cwd: projectDir });
+
+      if (!fs.existsSync(installerOutputPath)) {
+        die(`expected installer was not created: ${installerOutputPath}`);
+      }
     }
   } finally {
     fs.rmSync(stagingDir, { recursive: true, force: true });

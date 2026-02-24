@@ -97,6 +97,14 @@ test('workflow defines windows matrix for x64 and arm64 portable zip', () => {
   assert.match(content, /CodexWindows_\$\{\{ matrix\.arch \}\}_\$\{env:SAFE_VERSION\}\.zip/);
 });
 
+test('workflow builds and uploads NSIS installer artifacts for windows matrix', () => {
+  const content = readWorkflow();
+
+  assert.match(content, /installerName\s*=\s*"CodexInstaller_\$\{\{ matrix\.arch \}\}_\$\{env:SAFE_VERSION\}\.exe"/);
+  assert.match(content, /--installer-output/);
+  assert.match(content, /gh release upload "\$TAG" "\$INSTALLER_PATH#\$INSTALLER_NAME" --clobber/);
+});
+
 test('workflow uploads and downloads payload metadata artifact between mac and windows jobs', () => {
   const content = readWorkflow();
 

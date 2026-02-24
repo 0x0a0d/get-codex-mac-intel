@@ -282,10 +282,14 @@ jobs:
         run: |
           $artifactName = "CodexWindows_${{ matrix.arch }}_${env:SAFE_VERSION}.zip"
           $artifactPath = Join-Path $env:RUNNER_TEMP $artifactName
+          $installerName = "CodexInstaller_${{ matrix.arch }}_${env:SAFE_VERSION}.exe"
+          $installerPath = Join-Path $env:RUNNER_TEMP $installerName
           $payloadDir = Join-Path $env:RUNNER_TEMP "codex-payload"
-          node scripts/build-windows-zip.js --arch "${{ matrix.arch }}" --payload-dir "$payloadDir" --output "$artifactPath"
+          node scripts/build-windows-zip.js --arch "${{ matrix.arch }}" --payload-dir "$payloadDir" --output "$artifactPath" --installer-output "$installerPath"
           "artifact_name=$artifactName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "artifact_path=$artifactPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "installer_name=$installerName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "installer_path=$installerPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Verify packaged native modules load in CI
         shell: pwsh
@@ -343,6 +347,9 @@ jobs:
           TAG: ${{ needs.codex-intel-release.outputs.release_tag }}
           ARTIFACT_PATH: ${{ steps.winmeta.outputs.artifact_path }}
           ARTIFACT_NAME: ${{ steps.winmeta.outputs.artifact_name }}
+          INSTALLER_PATH: ${{ steps.winmeta.outputs.installer_path }}
+          INSTALLER_NAME: ${{ steps.winmeta.outputs.installer_name }}
         run: |
           set -euo pipefail
           gh release upload "$TAG" "$ARTIFACT_PATH#$ARTIFACT_NAME" --clobber
+          gh release upload "$TAG" "$INSTALLER_PATH#$INSTALLER_NAME" --clobber
