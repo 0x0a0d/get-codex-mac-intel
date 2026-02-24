@@ -15,5 +15,10 @@
   },
   "keywords": ["codex", "intel", "build", "mac"],
   "author": "0x0a0d",
-  "license": "ISC"
+  "license": "ISC",
+  "files": [
+    "bin",
+    "lib",
+    "scripts"
+  ]
 }

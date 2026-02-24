@@ -84,7 +84,7 @@ test('workflow builds intel dmg and names output from VERSION', () => {
 
   assert.match(content, /PlistBuddy[\s\S]*CFBundleShortVersionString/);
   assert.match(content, /artifact_name="CodexIntelMac_\$\{safe_version\}\.dmg"/);
-  assert.match(content, /node\s+index\.js\s+--output\s+"\$ARTIFACT_PATH"\s+"\$SOURCE_DMG_PATH"/);
+  assert.match(content, /node\s+scripts\/build-intel-dmg\.js\s+--output\s+"\$ARTIFACT_PATH"\s+"\$SOURCE_DMG_PATH"/);
 });
 
 test('workflow updates ci-cache state with required fields', () => {

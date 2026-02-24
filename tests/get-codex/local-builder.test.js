@@ -27,7 +27,7 @@ test('local builder fails when entrypoint is missing', async () => {
 
   await assert.rejects(
     () => builder.run({ location: '/tmp', downloadedPath: '/tmp/Codex.dmg', outputName: 'out.dmg' }),
-    /entrypoint \(index\.js\) was not found/
+    /entrypoint \(missing\.js\) was not found/
   );
 });
 

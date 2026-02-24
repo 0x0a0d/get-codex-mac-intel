@@ -128,7 +128,7 @@ jobs:
           ARTIFACT_PATH: ${{ steps.meta.outputs.artifact_path }}
         run: |
           set -euo pipefail
-          node index.js --output "$ARTIFACT_PATH" "$SOURCE_DMG_PATH"
+          node scripts/build-intel-dmg.js --output "$ARTIFACT_PATH" "$SOURCE_DMG_PATH"
 
       - name: Create release notes
         if: ${{ steps.decision.outputs.should_build == 'true' }}

@@ -44,7 +44,7 @@ if (positional.length > 1) {
 // Paths
 // ---------------------------------------------------------------------------
 
-const SCRIPT_DIR = __dirname;
+const SCRIPT_DIR = path.resolve(__dirname, '..');
 const SCRIPT_PARENT_DIR = path.dirname(SCRIPT_DIR);
 const TMP_BASE = path.join(os.tmpdir(), 'codex-intel-build');
 
@@ -89,7 +89,7 @@ function die(msg) {
 function printUsage() {
   process.stdout.write(`\
 Usage:
-  node index.js [options] [path/to/Codex.dmg]
+  node scripts/build-intel-dmg.js [options] [path/to/Codex.dmg]
 
 Options:
   -o, --output <file>   Output DMG path (default: ./CodexIntelMac.dmg)
