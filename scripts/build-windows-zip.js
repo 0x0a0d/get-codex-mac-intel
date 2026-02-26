@@ -269,23 +269,35 @@ function build() {
     const iconPath = payloadIconPath && fs.existsSync(payloadIconPath)
       ? payloadIconPath
       : (icoCandidates.length > 0 ? icoCandidates[0] : '');
-    if (iconPath) {
-      const rceditExecutablePath = path.join(
-        projectDir,
-        'node_modules',
-        '.bin',
-        process.platform === 'win32' ? 'rcedit.cmd' : 'rcedit'
-      );
-      const rceditCommand = fs.existsSync(rceditExecutablePath)
-        ? rceditExecutablePath
-        : 'rcedit';
-      const iconResult = spawnSync(
-        rceditCommand,
-        [codexExePath, '--set-icon', iconPath],
+
+    function getLocalRceditPath() {
+      const binName = process.platform === 'win32' ? 'rcedit.cmd' : 'rcedit';
+      return path.join(projectDir, 'node_modules', '.bin', binName);
+    }
+
+    function tryPatchIconWithRcedit() {
+      const localRceditPath = getLocalRceditPath();
+      if (fs.existsSync(localRceditPath)) {
+        const iconResult = spawnSync(
+          localRceditPath,
+          [codexExePath, '--set-icon', iconPath],
+          { cwd: projectDir, stdio: 'inherit', shell: true }
+        );
+        return !(iconResult.error || iconResult.status !== 0);
+      }
+
+      const npxResult = spawnSync(
+        'npx',
+        ['--no-install', 'rcedit', codexExePath, '--set-icon', iconPath],
         { cwd: projectDir, stdio: 'inherit', shell: true }
       );
-      if (iconResult.error || iconResult.status !== 0) {
-        warn(`Unable to set executable icon with ${rceditCommand}. Continuing without patched exe icon.`);
+      return !(npxResult.error || npxResult.status !== 0);
+    }
+
+    if (iconPath) {
+      const iconPatched = tryPatchIconWithRcedit();
+      if (!iconPatched) {
+        warn('Unable to set executable icon because rcedit was not available. Continuing without patched exe icon.');
       }
     }
 
