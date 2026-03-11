@@ -45,18 +45,22 @@ function appendGithubOutput(filePath, outputs) {
 function run(env = process.env) {
   const incomingLastModified = env.LAST_MODIFIED;
   const cachedLastModified = env.CACHED_LAST_MODIFIED;
+  const incomingNpmVersion = env.NPM_CODEX_VERSION;
+  const cachedNpmVersion = env.CACHED_NPM_CODEX_VERSION;
   const force = parseForce(env.FORCE);
 
   const build = shouldBuild({
     incomingLastModified,
     cachedLastModified,
+    incomingNpmVersion,
+    cachedNpmVersion,
     force,
   });
 
   const reason = getReason({ force, build });
 
   process.stdout.write(
-    `CI check: should_build=${build} (reason=${reason}, incoming=${incomingLastModified || ''}, cached=${cachedLastModified || ''}, force=${force})\n`
+    `CI check: should_build=${build} (reason=${reason}, incoming=${incomingLastModified || ''}, cached=${cachedLastModified || ''}, npm_incoming=${incomingNpmVersion || ''}, npm_cached=${cachedNpmVersion || ''}, force=${force})\n`
   );
 
   appendGithubOutput(env.GITHUB_OUTPUT, {
