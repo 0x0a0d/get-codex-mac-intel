@@ -1,6 +1,6 @@
 {
   "name": "get-codex-lost-world",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "CLI to download/build Codex Mac Intel DMG artifacts from upstream Codex.dmg.",
   "main": "lib/get-codex-lost-world/main.js",
   "bin": {
