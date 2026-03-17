@@ -69,29 +69,3 @@ test('pickLatestDmgAsset throws when selected dmg lacks browser_download_url', (
   );
 });
 
-test('pickLatestAssetForTarget selects windows x64 zip', () => {
-  const release = {
-    assets: [
-      { name: 'CodexWindows_arm64_1.2.3.zip', browser_download_url: 'https://example.com/arm64.zip' },
-      { name: 'CodexWindows_x64_1.2.3.zip', browser_download_url: 'https://example.com/x64.zip' },
-    ],
-  };
-
-  assert.equal(
-    pickLatestAssetForTarget(release, { platform: 'windows', arch: 'x64', format: 'zip' }).name,
-    'CodexWindows_x64_1.2.3.zip'
-  );
-});
-
-test('pickLatestAssetForTarget throws when windows arch is unavailable', () => {
-  const release = {
-    assets: [
-      { name: 'CodexWindows_x64_1.2.3.zip', browser_download_url: 'https://example.com/x64.zip' },
-    ],
-  };
-
-  assert.throws(
-    () => pickLatestAssetForTarget(release, { platform: 'windows', arch: 'arm64', format: 'zip' }),
-    /No \.zip asset found for windows\/arm64/
-  );
-});

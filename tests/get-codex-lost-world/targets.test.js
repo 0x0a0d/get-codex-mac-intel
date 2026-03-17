@@ -12,15 +12,6 @@ test('normalizeTarget defaults to mac x64 dmg', () => {
   });
 });
 
-test('normalizeTarget supports windows arm64 zip', () => {
-  assert.deepEqual(normalizeTarget({ platform: 'windows', arch: 'arm64', format: 'zip' }), {
-    platform: 'windows',
-    arch: 'arm64',
-    format: 'zip',
-  });
-});
-
 test('normalizeTarget rejects unsupported combinations', () => {
-  assert.throws(() => normalizeTarget({ platform: 'windows', arch: 'ppc64', format: 'zip' }), /Unsupported arch/);
-  assert.throws(() => normalizeTarget({ platform: 'windows', arch: 'x64', format: 'dmg' }), /Unsupported format/);
+  assert.throws(() => normalizeTarget({ platform: 'mac', arch: 'x64', format: 'zip' }), /Unsupported format/);
 });

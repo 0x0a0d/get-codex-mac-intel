@@ -16,16 +16,3 @@ test('sanitizeVersion replaces disallowed characters with dashes', () => {
   assert.equal(sanitizeVersion('1/2:3'), '1-2-3');
 });
 
-test('makeOutputNameForTarget returns windows x64 zip naming', () => {
-  assert.equal(
-    makeOutputNameForTarget({ version: '1.2.3', platform: 'windows', arch: 'x64', format: 'zip' }),
-    'CodexWindows_x64_1.2.3.zip'
-  );
-});
-
-test('makeOutputNameForTarget returns windows arm64 zip naming', () => {
-  assert.equal(
-    makeOutputNameForTarget({ version: '1.2.3 beta', platform: 'windows', arch: 'arm64', format: 'zip' }),
-    'CodexWindows_arm64_1.2.3-beta.zip'
-  );
-});

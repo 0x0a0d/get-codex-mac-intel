@@ -9,11 +9,9 @@ function printTargetShortcuts() {
     'Target shortcuts:',
     '  --mac-silicon      Build/download for Apple Silicon Mac (default source: original Codex.dmg on macOS arm64 host)',
     '  --mac-intel        Build/download for Intel Mac (.dmg)',
-    '  --windows-x64      Build/download for Windows x64 (.zip)',
-    '  --windows-arm64    Build/download for Windows arm64 (.zip)',
     '',
     'Example:',
-    '  npx get-codex-lost-world --windows-x64 --workdir /tmp/codex',
+    '  npx get-codex-lost-world -w ~/Downloads',
   ].join('\n');
 
   process.stdout.write(`${message}\n`);
@@ -23,8 +21,6 @@ function remapShortcutArgs(argv = []) {
   const targetShortcuts = {
     '--mac-silicon': ['--platform', 'mac', '--format', 'dmg'],
     '--mac-intel': ['--platform', 'mac', '--arch', 'x64', '--format', 'dmg'],
-    '--windows-x64': ['--platform', 'windows', '--arch', 'x64', '--format', 'zip'],
-    '--windows-arm64': ['--platform', 'windows', '--arch', 'arm64', '--format', 'zip'],
   };
 
   const selectedShortcuts = argv.filter((arg) => Object.prototype.hasOwnProperty.call(targetShortcuts, arg));

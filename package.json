@@ -1,7 +1,7 @@
 {
   "name": "get-codex-lost-world",
   "version": "1.0.5",
-  "description": "CLI to download/build Codex Mac Intel DMG and Windows ZIP artifacts from upstream Codex.dmg.",
+  "description": "CLI to download/build Codex Mac Intel DMG artifacts from upstream Codex.dmg.",
   "main": "lib/get-codex-lost-world/main.js",
   "bin": {
     "get-codex-lost-world": "bin/get-codex-lost-world.js"
@@ -17,9 +17,7 @@
     "codex",
     "intel",
     "build",
-    "mac",
-    "windows",
-    "zip"
+    "mac"
   ],
   "author": "0x0a0d",
   "license": "ISC",
