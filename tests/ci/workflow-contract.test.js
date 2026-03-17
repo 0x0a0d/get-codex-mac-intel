@@ -36,10 +36,10 @@ test('workflow uses Codex.dmg source URL', () => {
   assert.match(content, /https:\/\/persistent\.oaistatic\.com\/codex-app-prod\/Codex\.dmg/);
 });
 
-test('workflow defines CodexIntelMac artifact naming pattern', () => {
+test('workflow defines CodexIntelMac / CodexMacIntel artifact naming pattern', () => {
   const content = readWorkflow();
 
-  assert.match(content, /CodexIntelMac_/);
+  assert.match(content, /Codex(?:IntelMac|MacIntel)_/);
 });
 
 test('workflow release notes include signing guidance', () => {
